@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException #Тест
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import (OAuth2PasswordRequestForm)
 from sqlalchemy.orm import Session
 
