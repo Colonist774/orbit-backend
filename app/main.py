@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException #Тест
 from fastapi.security import (OAuth2PasswordRequestForm)
 from sqlalchemy.orm import Session
 
@@ -9,7 +9,6 @@ from app.database import get_session
 from app.models import User
 from app.security import (
     create_access_token,
-    decode_access_token,
     verify_password,
 )
 from app.api.users import router as users_router
