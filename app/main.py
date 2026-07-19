@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import (OAuth2PasswordRequestForm)
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user
@@ -26,6 +27,16 @@ app.include_router(chats_router)
 app.include_router(messages.router)
 app.include_router(websocket.router)
 app.include_router(keys.router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post(
