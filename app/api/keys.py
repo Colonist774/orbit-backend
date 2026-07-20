@@ -4,7 +4,11 @@ from sqlalchemy.orm import Session
 from app.database import get_session
 from app.dependencies import get_current_user
 from app.models import User, UserPublicKey
-from app.schemas import PublicKeyCreate, PublicKeyResponse
+from app.schemas import (
+    PublicKeyCreate,
+    PublicKeyResponse,
+    UserPublicKeyResponse,
+)
 
 
 router = APIRouter(
@@ -17,38 +21,72 @@ router = APIRouter(
     "/me",
     response_model=PublicKeyResponse,
 )
-def save_public_key(
+def save_my_key(
     data: PublicKeyCreate,
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    public_key = (
+    key_record = (
         session.query(UserPublicKey)
         .filter(UserPublicKey.user_id == current_user.id)
         .first()
     )
 
-    if public_key is None:
-        public_key = UserPublicKey(
+    if key_record is None:
+        key_record = UserPublicKey(
             user_id=current_user.id,
             public_key=data.public_key,
             algorithm=data.algorithm,
         )
+        session.add(key_record)
 
-        session.add(public_key)
-    else:
-        public_key.public_key = data.public_key
-        public_key.algorithm = data.algorithm
+    key_record.public_key = data.public_key
+    key_record.algorithm = data.algorithm
+
+    key_record.encrypted_private_key = (
+        data.encrypted_private_key
+    )
+    key_record.private_key_iv = data.private_key_iv
+    key_record.private_key_salt = (
+        data.private_key_salt
+    )
+    key_record.private_key_kdf = data.private_key_kdf
+    key_record.private_key_iterations = (
+        data.private_key_iterations
+    )
 
     session.commit()
-    session.refresh(public_key)
+    session.refresh(key_record)
 
-    return public_key
+    return key_record
+
+
+@router.get(
+    "/me",
+    response_model=PublicKeyResponse,
+)
+def get_my_key(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    key_record = (
+        session.query(UserPublicKey)
+        .filter(UserPublicKey.user_id == current_user.id)
+        .first()
+    )
+
+    if key_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Key backup not found",
+        )
+
+    return key_record
 
 
 @router.get(
     "/users/{user_id}",
-    response_model=PublicKeyResponse,
+    response_model=UserPublicKeyResponse,
 )
 def get_user_public_key(
     user_id: int,
@@ -63,16 +101,16 @@ def get_user_public_key(
             detail="User not found",
         )
 
-    public_key = (
+    key_record = (
         session.query(UserPublicKey)
         .filter(UserPublicKey.user_id == user_id)
         .first()
     )
 
-    if public_key is None:
+    if key_record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Public key not found",
         )
 
-    return public_key
+    return key_record
