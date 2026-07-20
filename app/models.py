@@ -201,7 +201,30 @@ class UserPublicKey(Base):
         String(50),
         default="RSA-OAEP-2048",
     )
+    
+    encrypted_private_key: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
 
+    private_key_iv: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    private_key_salt: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    private_key_kdf: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    private_key_iterations: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
