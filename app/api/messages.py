@@ -1,15 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Response,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.database import get_session
 from app.dependencies import get_current_user
 from app.models import Chat, ChatMember, Message, User
-from app.websocket_manager import manager
 from app.schemas import (
     MessageCreate,
     MessageListResponse,
     MessageResponse,
 )
+from app.websocket_manager import manager
 
 
 router = APIRouter(
@@ -51,6 +58,22 @@ def check_chat_membership(
         )
 
 
+def get_chat_member_ids(
+    chat_id: int,
+    session: Session,
+) -> list[int]:
+    rows = (
+        session.query(ChatMember.user_id)
+        .filter(ChatMember.chat_id == chat_id)
+        .all()
+    )
+
+    return [
+        user_id
+        for user_id, in rows
+    ]
+
+
 @router.post(
     "/{chat_id}/messages",
     response_model=MessageResponse,
@@ -80,10 +103,9 @@ async def send_message(
     session.commit()
     session.refresh(message)
 
-    member_ids = (
-        session.query(ChatMember.user_id)
-        .filter(ChatMember.chat_id == chat_id)
-        .all()
+    member_ids = get_chat_member_ids(
+        chat_id=chat_id,
+        session=session,
     )
 
     event = {
@@ -99,7 +121,7 @@ async def send_message(
         },
     }
 
-    for member_id, in member_ids:
+    for member_id in member_ids:
         await manager.send_to_user(
             user_id=member_id,
             data=event,
@@ -159,3 +181,65 @@ def get_messages(
         "next_before_id": next_before_id,
         "has_more": has_more,
     }
+
+
+@router.delete(
+    "/{chat_id}/messages/{message_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_message(
+    chat_id: int,
+    message_id: int,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    check_chat_membership(
+        chat_id=chat_id,
+        user_id=current_user.id,
+        session=session,
+    )
+
+    message = (
+        session.query(Message)
+        .filter(
+            Message.id == message_id,
+            Message.chat_id == chat_id,
+        )
+        .first()
+    )
+
+    if message is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found",
+        )
+
+    if message.sender_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can delete only your own messages",
+        )
+
+    member_ids = get_chat_member_ids(
+        chat_id=chat_id,
+        session=session,
+    )
+
+    session.delete(message)
+    session.commit()
+
+    event = {
+        "type": "message.deleted",
+        "message_id": message_id,
+        "chat_id": chat_id,
+    }
+
+    for member_id in member_ids:
+        await manager.send_to_user(
+            user_id=member_id,
+            data=event,
+        )
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+    )
