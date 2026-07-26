@@ -1,5 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
@@ -41,18 +42,31 @@ class MessageCreate(BaseModel):
     key_version: int = Field(default=1, ge=1)
 
 
+class AttachmentResponse(BaseModel):
+    id: int
+    message_id: int
+    mime_type: str
+    size_bytes: int
+    width: int | None
+    height: int | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MessageResponse(BaseModel):
     id: int
     chat_id: int
     sender_id: int
+    message_type: str
     ciphertext: str
     iv: str
     key_version: int
     created_at: datetime
+    attachment: AttachmentResponse | None = None
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
+
 
 class MessageListResponse(BaseModel):
     messages: list[MessageResponse]
@@ -117,9 +131,7 @@ class PublicKeyResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserPublicKeyResponse(BaseModel):
@@ -129,6 +141,4 @@ class UserPublicKeyResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "from_attributes": True,
-    }
+    model_config = ConfigDict(from_attributes=True)

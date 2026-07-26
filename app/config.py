@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Папка для зашифрованных вложений. На сервере её лучше
+    # переопределить через ORBIT_UPLOAD_DIR и вынести в постоянный volume.
+    orbit_upload_dir: str = "uploads"
+    max_image_size_mb: int = 10
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

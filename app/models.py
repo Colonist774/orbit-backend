@@ -4,6 +4,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Identity,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -143,7 +144,7 @@ class ChatMember(Base):
             f"user_id={self.user_id}"
             f")"
         )
-    
+
 
 class Message(Base):
     __tablename__ = "messages"
@@ -160,6 +161,17 @@ class Message(Base):
         index=True,
     )
 
+    # text — обычное сообщение, image — сообщение с одним изображением.
+    message_type: Mapped[str] = mapped_column(
+        String(20),
+        default="text",
+        server_default="text",
+        nullable=False,
+    )
+
+    # Для текста здесь находится зашифрованный текст и ключи.
+    # Для изображения — только зашифрованные AES-ключи; сами
+    # зашифрованные байты лежат в файловом хранилище.
     ciphertext: Mapped[str] = mapped_column(Text)
 
     iv: Mapped[str] = mapped_column(
@@ -183,6 +195,63 @@ class Message(Base):
         back_populates="messages",
     )
 
+    attachment: Mapped["Attachment | None"] = relationship(
+        back_populates="message",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # В первой версии одно изображение связано с одним сообщением.
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("messages.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    # Случайное имя зашифрованного файла внутри uploads/images.
+    storage_key: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=False,
+    )
+
+    mime_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    size_bytes: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    width: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    height: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    message: Mapped["Message"] = relationship(
+        back_populates="attachment",
+    )
+
 
 class UserPublicKey(Base):
     __tablename__ = "user_public_keys"
@@ -201,7 +270,7 @@ class UserPublicKey(Base):
         String(50),
         default="RSA-OAEP-2048",
     )
-    
+
     encrypted_private_key: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
@@ -225,6 +294,7 @@ class UserPublicKey(Base):
     private_key_iterations: Mapped[int | None] = mapped_column(
         nullable=True,
     )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
