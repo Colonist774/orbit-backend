@@ -39,6 +39,8 @@ ALLOWED_IMAGE_TYPES = {
     "image/jpeg",
     "image/png",
     "image/webp",
+    "image/gif",
+    "image/avif",
 }
 
 UPLOAD_ROOT = Path(settings.orbit_upload_dir)
