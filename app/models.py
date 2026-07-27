@@ -161,7 +161,7 @@ class Message(Base):
         index=True,
     )
 
-    # text — обычное сообщение, image — сообщение с одним изображением.
+    # text, image, audio или video.
     message_type: Mapped[str] = mapped_column(
         String(20),
         default="text",
@@ -170,8 +170,8 @@ class Message(Base):
     )
 
     # Для текста здесь находится зашифрованный текст и ключи.
-    # Для изображения — только зашифрованные AES-ключи; сами
-    # зашифрованные байты лежат в файловом хранилище.
+    # Для вложения — только зашифрованные AES-ключи; зашифрованные
+    # байты самого файла хранятся отдельно.
     ciphertext: Mapped[str] = mapped_column(Text)
 
     iv: Mapped[str] = mapped_column(
@@ -207,7 +207,7 @@ class Attachment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    # В первой версии одно изображение связано с одним сообщением.
+    # Пока одно вложение связано с одним сообщением.
     message_id: Mapped[int] = mapped_column(
         ForeignKey("messages.id", ondelete="CASCADE"),
         unique=True,
@@ -215,7 +215,7 @@ class Attachment(Base):
         nullable=False,
     )
 
-    # Случайное имя зашифрованного файла внутри uploads/images.
+    # Относительный путь зашифрованного файла.
     storage_key: Mapped[str] = mapped_column(
         String(100),
         unique=True,
@@ -238,6 +238,11 @@ class Attachment(Base):
     )
 
     height: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    duration_ms: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
     )

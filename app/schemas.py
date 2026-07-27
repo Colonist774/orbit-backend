@@ -49,6 +49,7 @@ class AttachmentResponse(BaseModel):
     size_bytes: int
     width: int | None
     height: int | None
+    duration_ms: int | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
